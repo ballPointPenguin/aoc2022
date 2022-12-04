@@ -1,0 +1,112 @@
+# 2022 Day 4
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module<h3>
+</h3>
+
+```elixir
+defmodule CampCleanup do
+  def redundancies(input) do
+    input
+    |> process_input()
+    |> Enum.map(&contains?/1)
+    |> Enum.count(fn bool -> bool end)
+  end
+
+  def overlaps(input) do
+    input
+    |> process_input()
+    |> Enum.map(&overlaps_any?/1)
+    |> Enum.count(fn bool -> bool end)
+  end
+
+  defp contains?({left, right}) do
+    contained_by?(left, right) or contained_by?(right, left)
+  end
+
+  defp contained_by?(range, container) do
+    Enum.all?(range, fn x -> Enum.member?(container, x) end)
+  end
+
+  defp overlaps_any?({left, right}) do
+    Enum.any?(left, fn x -> Enum.member?(right, x) end)
+  end
+
+  # :: [{2..4, 6..8}]
+  defp process_input(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.split(&1, [",", "-"]))
+    |> Enum.map(&Enum.map(&1, fn char -> String.to_integer(char) end))
+    |> Enum.map(fn [w, x, y, z] -> {w..x, y..z} end)
+  end
+end
+```
+
+<h3>
+Evaluate<h3>
+</h3>
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> CampCleanup.redundancies()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> CampCleanup.overlaps()
+
+{part_1, part_2}
+```
+
+<h3>
+Test<h3>
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule CampCleanupTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    # paste your example data after line 8
+    input = ~s(
+2-4,6-8
+2-3,4-5
+5-7,7-9
+2-8,3-7
+6-6,4-6
+2-6,4-8
+)
+
+    {:ok, input: input}
+  end
+
+  test "redundancies", %{input: input} do
+    assert CampCleanup.redundancies(input) == 2
+  end
+
+  test "overlaps", %{input: input} do
+    assert CampCleanup.overlaps(input) == 4
+  end
+end
+
+ExUnit.run()
+```

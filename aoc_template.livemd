@@ -4,24 +4,6 @@
 Mix.install([:kino])
 ```
 
-## Description
-
-<details>
-  <summary>
-    Puzzle: Part 1
-  </summary>
-  <em>Paste description here...<em>
-</details>
-
-<!-- livebook:{"break_markdown":true} -->
-
-<details>
-  <summary>
-    Puzzle: Part 2
-  </summary>
-  <em>Paste description here...<em>
-</details>
-
 ## Input
 
 ```elixir

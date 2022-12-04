@@ -1,0 +1,108 @@
+# AoC Template
+
+```elixir
+Mix.install([:kino])
+```
+
+## Description
+
+<details>
+  <summary>
+    Puzzle: Part 1
+  </summary>
+  <em>Paste description here...<em>
+</details>
+
+<!-- livebook:{"break_markdown":true} -->
+
+<details>
+  <summary>
+    Puzzle: Part 2
+  </summary>
+  <em>Paste description here...<em>
+</details>
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module<h3>
+</h3>
+
+```elixir
+defmodule Puzzle do
+  def part_one(input) do
+    input
+    |> process_input()
+
+    # Do stuff
+  end
+
+  def part_two(input) do
+    input
+    |> process_input()
+
+    # Do stuff
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split("\n", trim: true)
+  end
+end
+```
+
+<h3>
+Evaluate<h3>
+</h3>
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+{part_1, part_2}
+```
+
+<h3>
+Test<h3>
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    # paste your example data after line 8
+    input = ~s(
+)
+
+    {:ok, input: input}
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input) == 37
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) == 42
+  end
+end
+
+ExUnit.run()
+```

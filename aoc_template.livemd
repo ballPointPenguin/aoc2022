@@ -13,7 +13,7 @@ input = Kino.Input.textarea("Puzzle Input")
 ## Code
 
 <h3>
-Module<h3>
+Module
 </h3>
 
 ```elixir
@@ -40,7 +40,7 @@ end
 ```
 
 <h3>
-Evaluate<h3>
+Evaluate
 </h3>
 
 ```elixir
@@ -58,7 +58,7 @@ part_2 =
 ```
 
 <h3>
-Test<h3>
+Test
 </h3>
 
 <!-- livebook:{"reevaluate_automatically":true} -->

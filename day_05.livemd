@@ -1,0 +1,170 @@
+# 2022 Day 5
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule SupplyStacks do
+  def arrange_crates(input) do
+    {stacks, procedures} = process_input(input)
+
+    process(stacks, procedures, true)
+    |> get_tops()
+  end
+
+  def arrange_crates_no_reverse(input) do
+    {stacks, procedures} = process_input(input)
+
+    process(stacks, procedures, false)
+    |> get_tops()
+  end
+
+  defp process(stacks, [], _), do: stacks
+
+  defp process(stacks, [procedure | tail], reverse) do
+    next = process_one(stacks, procedure, reverse)
+    process(next, tail, reverse)
+  end
+
+  defp check_cargo(stacks, {amount, from, _dest}, reverse) do
+    cargo =
+      Enum.take(
+        Enum.at(stacks, from),
+        amount
+      )
+
+    if reverse do
+      Enum.reverse(cargo)
+    else
+      cargo
+    end
+  end
+
+  defp process_one(stacks, {amount, from, dest} = procedure, reverse) do
+    cargo = check_cargo(stacks, procedure, reverse)
+
+    Enum.map(Enum.with_index(stacks), fn {stack, index} ->
+      case index do
+        ^from ->
+          Enum.drop(stack, amount)
+
+        ^dest ->
+          cargo ++ stack
+
+        _ ->
+          stack
+      end
+    end)
+  end
+
+  defp get_tops(stacks) do
+    stacks
+    |> Enum.map(&List.first/1)
+    |> Enum.map(fn top -> if is_nil(top), do: 32, else: top end)
+    |> List.to_string()
+  end
+
+  defp process_input(input) do
+    [stack_text | procedure_text] = String.split(input, "move")
+
+    stacks =
+      stack_text
+      |> String.split(~r{\n\s*\d}, trim: true)
+      |> List.first()
+      |> String.split("\n", trim: true)
+      |> Enum.map(
+        &(&1
+          |> String.to_charlist()
+          |> Enum.drop(1)
+          |> Enum.take_every(4))
+      )
+      |> Enum.zip()
+      |> Enum.map(
+        &(&1
+          |> Tuple.to_list()
+          |> Enum.drop_while(fn char -> char == 32 end))
+      )
+
+    procedures =
+      Enum.map(procedure_text, fn text ->
+        Regex.scan(~r/\d+/, text)
+        |> List.flatten()
+        |> Enum.map(&String.to_integer/1)
+      end)
+      |> Enum.map(fn [amount, from, dest] -> {amount, from - 1, dest - 1} end)
+
+    {stacks, procedures}
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> SupplyStacks.arrange_crates()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> SupplyStacks.arrange_crates_no_reverse()
+
+{part_1, part_2}
+```
+
+<h3>
+Test<h3>
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule SupplyStacksTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input = ~s(
+    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2
+)
+
+    {:ok, input: input}
+  end
+
+  test "arrange_crates", %{input: input} do
+    assert SupplyStacks.arrange_crates(input) == "CMZ"
+  end
+
+  test "arrange_crates_no_reverse", %{input: input} do
+    assert SupplyStacks.arrange_crates_no_reverse(input) == "MCD"
+  end
+end
+
+ExUnit.run()
+```

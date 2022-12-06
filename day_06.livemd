@@ -1,0 +1,99 @@
+# 2022 Day 6
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Tuning do
+  def start_marker(input), do: find_marker(input, 4)
+
+  def message_marker(input), do: find_marker(input, 14)
+
+  defp find_marker(input, length) do
+    input
+    |> process_input()
+    |> Enum.chunk_every(length, 1, :discard)
+    |> Enum.find_index(fn frame -> Enum.uniq(frame) == frame end)
+    |> Kernel.+(length)
+  end
+
+  defp process_input(input), do: String.to_charlist(input)
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Tuning.start_marker()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Tuning.message_marker()
+
+{part_1, part_2}
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule TuningTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    data_streams = [
+      "mjqjpqmgbljsphdztnvjfqwrcgsmlb",
+      "bvwbjplbgvbhsrlpgdmjqwftvncz",
+      "nppdvjthqldpwncqszvftbrmjlhg",
+      "nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg",
+      "zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"
+    ]
+
+    {:ok, data_streams: data_streams}
+  end
+
+  test "start_marker", %{data_streams: data_streams} do
+    assert Tuning.start_marker(Enum.at(data_streams, 0)) == 7
+    assert Tuning.start_marker(Enum.at(data_streams, 1)) == 5
+    assert Tuning.start_marker(Enum.at(data_streams, 2)) == 6
+    assert Tuning.start_marker(Enum.at(data_streams, 3)) == 10
+    assert Tuning.start_marker(Enum.at(data_streams, 4)) == 11
+  end
+
+  test "message_marker", %{data_streams: data_streams} do
+    assert Tuning.message_marker(Enum.at(data_streams, 0)) == 19
+    assert Tuning.message_marker(Enum.at(data_streams, 1)) == 23
+    assert Tuning.message_marker(Enum.at(data_streams, 2)) == 23
+    assert Tuning.message_marker(Enum.at(data_streams, 3)) == 29
+    assert Tuning.message_marker(Enum.at(data_streams, 4)) == 26
+  end
+end
+
+ExUnit.run()
+```
+
+[![Run in Livebook](https://livebook.dev/badge/v1/gray.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_06.livemd)

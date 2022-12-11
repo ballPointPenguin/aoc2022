@@ -1,0 +1,242 @@
+# Day 07
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Puzzle do
+  @disk_size 70_000_000
+  @space_needed 30_000_000
+
+  def part_one(input) do
+    input
+    |> get_dir_sizes()
+    |> Enum.filter(fn val -> val <= 100_000 end)
+    |> Enum.sum()
+  end
+
+  def part_two(input) do
+    input
+    |> get_dir_sizes()
+    |> Enum.sort()
+    |> find_best_dir()
+  end
+
+  defp get_dir_sizes(input) do
+    input
+    |> process_input()
+    |> walk_the_tree()
+    |> Map.values()
+  end
+
+  defp walk_the_tree(commands, dir_map \\ %{}) do
+    new_map =
+      commands
+      |> Enum.reduce(dir_map, fn command, acc -> process_command(command, acc) end)
+      |> Map.drop([:cwd])
+
+    tbds = tbd_count(new_map)
+
+    if tbds == 0 do
+      new_map
+    else
+      walk_the_tree(commands, new_map)
+    end
+  end
+
+  defp tbd_count(dir_map) do
+    Map.values(dir_map)
+    |> Enum.count(fn val -> val == :tbd end)
+  end
+
+  defp process_command({:cd, ".."}, acc) do
+    cwd = Map.get(acc, :cwd)
+
+    new_cwd =
+      String.split(cwd, "/")
+      |> Enum.drop(-2)
+      |> Enum.join("/")
+      |> Kernel.<>("/")
+
+    Map.put(acc, :cwd, new_cwd)
+  end
+
+  defp process_command({:cd, "/"}, acc), do: Map.put(acc, :cwd, "/")
+
+  defp process_command({:cd, dest}, acc) do
+    cwd = Map.get(acc, :cwd)
+    new_cwd = "#{cwd}#{dest}/"
+
+    Map.put(acc, :cwd, new_cwd)
+  end
+
+  defp process_command({:ls, contents}, acc) do
+    cwd = Map.get(acc, :cwd)
+
+    if is_integer(Map.get(acc, cwd)) do
+      acc
+    else
+      new_contents = process_contents(contents, acc)
+      values = Keyword.values(new_contents)
+
+      if Enum.all?(values, fn val -> is_integer(val) end) do
+        Map.put(acc, cwd, Enum.sum(values))
+      else
+        Map.put(acc, cwd, :tbd)
+      end
+    end
+  end
+
+  defp process_contents(contents, current_map) do
+    Enum.reduce(contents, [], fn content, acc ->
+      acc ++ [process_content(content, current_map)]
+    end)
+  end
+
+  defp process_content({:dir, dir}, current_map) do
+    cwd = Map.get(current_map, :cwd)
+    fqdir = "#{cwd}#{dir}/"
+
+    case Map.get(current_map, fqdir) do
+      nil -> {:dir, fqdir}
+      :tbd -> {:dir, fqdir}
+      size -> {:file, size}
+    end
+  end
+
+  defp process_content({file, size}, _), do: {file, size}
+
+  defp min_size_needed(sizes) do
+    root_dir = sizes |> Enum.take(-1) |> List.first()
+    @space_needed - (@disk_size - root_dir)
+  end
+
+  defp find_best_dir(sizes) do
+    Enum.find(sizes, fn size -> size >= min_size_needed(sizes) end)
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.join(" ")
+    |> String.split("$ ")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(fn line -> line == "" end)
+    |> Enum.map(&process_code/1)
+  end
+
+  defp process_code(code) do
+    case String.slice(code, 0, 2) do
+      "cd" -> process_cd(code)
+      "ls" -> process_ls(code)
+    end
+  end
+
+  defp process_cd(code) do
+    [_, dest] = String.split(code, ~r{\bcd })
+    {:cd, dest}
+  end
+
+  defp process_ls(code) do
+    [_, contents] = String.split(code, ~r{\bls })
+
+    {:ls,
+     contents
+     |> String.split()
+     |> Enum.chunk_every(2)
+     |> Enum.map(&process_ls_unit/1)}
+  end
+
+  defp process_ls_unit(["dir", dir_name]), do: {:dir, dir_name}
+  defp process_ls_unit([size, _]), do: {:file, String.to_integer(size)}
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+{part_1, part_2}
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input = ~s(
+$ cd /
+$ ls
+dir a
+14848514 b.txt
+8504156 c.dat
+dir d
+$ cd a
+$ ls
+dir e
+29116 f
+2557 g
+62596 h.lst
+$ cd e
+$ ls
+584 i
+$ cd ..
+$ cd ..
+$ cd d
+$ ls
+4060174 j
+8033020 d.log
+5626152 d.ext
+7214296 k
+)
+
+    {:ok, input: input}
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input) == 95437
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) == 24_933_642
+  end
+end
+
+ExUnit.run()
+```
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_07.livemd)

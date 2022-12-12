@@ -1,0 +1,197 @@
+# 2022 Day 9
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Puzzle do
+  def part_one(input) do
+    input
+    |> process_input()
+    |> process_motion(2)
+    |> Enum.uniq()
+    |> Enum.count()
+  end
+
+  def part_two(input) do
+    input
+    |> process_input()
+    |> process_motion(10)
+    |> Enum.uniq()
+    |> Enum.count()
+  end
+
+  defp process_motion(moves, number) do
+    start = {0, 0}
+    head = start
+    knots = for _ <- 2..number, do: start
+    tails = [start]
+
+    process_moves({head, knots, tails}, moves)
+  end
+
+  defp process_moves({_head, _knots, tails}, []), do: tails
+
+  defp process_moves({head, knots, tails}, [move | moves]) do
+    process_steps(head, knots, tails, move)
+    |> process_moves(moves)
+  end
+
+  defp process_steps(head, knots, tails, {_dir, 0}), do: {head, knots, tails}
+
+  defp process_steps(head, knots, tails, {dir, dist}) do
+    new_head = move_head(head, dir)
+
+    new_knots =
+      Enum.reduce(knots, [new_head], fn knot, acc ->
+        [prev | _] = acc
+        [move_knot(prev, knot) | acc]
+      end)
+      |> Enum.drop(-1)
+      |> Enum.reverse()
+
+    new_tail = List.last(new_knots)
+
+    process_steps(new_head, new_knots, [new_tail | tails], {dir, dist - 1})
+  end
+
+  defp move_head({x, y}, :U), do: {x, y + 1}
+  defp move_head({x, y}, :D), do: {x, y - 1}
+  defp move_head({x, y}, :L), do: {x - 1, y}
+  defp move_head({x, y}, :R), do: {x + 1, y}
+
+  defp move_knot({hx, hy} = head, {tx, ty} = knot) do
+    cond do
+      touching?(head, knot) ->
+        knot
+
+      hx == tx && hy > ty ->
+        {tx, ty + 1}
+
+      hx == tx && hy < ty ->
+        {tx, ty - 1}
+
+      hx > tx && hy == ty ->
+        {tx + 1, ty}
+
+      hx < tx && hy == ty ->
+        {tx - 1, ty}
+
+      hx > tx && hy > ty ->
+        {tx + 1, ty + 1}
+
+      hx > tx && hy < ty ->
+        {tx + 1, ty - 1}
+
+      hx < tx && hy < ty ->
+        {tx - 1, ty - 1}
+
+      hx < tx && hy > ty ->
+        {tx - 1, ty + 1}
+    end
+  end
+
+  defp touching?({x1, y1}, {x2, y2}) do
+    abs(x1 - x2) < 2 && abs(y1 - y2) < 2
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split()
+    |> Enum.chunk_every(2)
+    |> Enum.map(&List.to_tuple/1)
+    |> Enum.map(fn {dir, dist} ->
+      {String.to_atom(dir), String.to_integer(dist)}
+    end)
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+{part_1, part_2}
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input_1 = ~s(
+R 4
+U 4
+L 3
+D 1
+R 4
+D 1
+L 5
+R 2
+)
+
+    input_2 = ~s(
+R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20
+)
+
+    {:ok, input_1: input_1, input_2: input_2}
+  end
+
+  test "part_one", %{input_1: input} do
+    assert Puzzle.part_one(input) == 13
+  end
+
+  test "part_two", %{input_1: input} do
+    assert Puzzle.part_two(input) == 1
+  end
+
+  test "part_two : larger input", %{input_2: input} do
+    assert Puzzle.part_two(input) == 36
+  end
+end
+
+ExUnit.run()
+```
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_09.livemd)

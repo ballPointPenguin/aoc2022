@@ -1,0 +1,251 @@
+# 2022 Day 8
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Puzzle do
+  def part_one(input) do
+    input
+    |> process_input()
+    |> generate_trees()
+    |> check_trees()
+    |> count_visible()
+  end
+
+  def part_two(input) do
+    input
+    |> process_input()
+    |> generate_trees()
+    |> get_scenery()
+    |> scenery_scores()
+    |> Enum.max()
+  end
+
+  defp generate_trees(rows) do
+    {row_max, col_max} = max_max(rows)
+
+    trees =
+      for row <- 0..row_max, col <- 0..col_max do
+        {row, col}
+      end
+
+    {trees, rows}
+  end
+
+  defp max_max([top_row | _] = rows) do
+    {
+      length(rows) - 1,
+      length(top_row) - 1
+    }
+  end
+
+  defp tree_height({row, col}, rows) do
+    rows
+    |> Enum.at(row)
+    |> Enum.at(col)
+  end
+
+  defp check_trees({trees, rows}) do
+    Enum.map(trees, fn tree -> check_tree(tree, rows) end)
+  end
+
+  defp check_tree(tree, rows) do
+    is_edge?(tree, rows) or
+      visible_from_top(tree, rows) or
+      visible_from_bottom(tree, rows) or
+      visible_from_left(tree, rows) or
+      visible_from_right(tree, rows)
+  end
+
+  defp get_scenery({trees, rows}) do
+    Enum.map(trees, fn tree ->
+      for aspect <- [:up, :down, :left, :right] do
+        scenery_count(tree, rows, aspect)
+      end
+    end)
+  end
+
+  defp scenery_scores(sceneries) do
+    Enum.map(sceneries, fn scenery ->
+      Enum.reduce(scenery, 1, fn count, acc -> acc * count end)
+    end)
+  end
+
+  defp count_visible(tree_list), do: Enum.count(tree_list, fn bool -> bool end)
+
+  defp is_edge?({0, _col}, _rows), do: true
+  defp is_edge?({_row, 0}, _rows), do: true
+
+  defp is_edge?({row, col}, rows) do
+    {row_max, col_max} = max_max(rows)
+    row == row_max or col == col_max
+  end
+
+  defp visible_from_top({row, col}, rows) do
+    for r <- 0..(row - 1) do
+      {r, col}
+    end
+    |> visible_through({row, col}, rows)
+  end
+
+  defp visible_from_bottom({row, col}, rows) do
+    for r <- (row + 1)..(length(rows) - 1) do
+      {r, col}
+    end
+    |> visible_through({row, col}, rows)
+  end
+
+  defp visible_from_left({row, col}, rows) do
+    for c <- 0..(col - 1) do
+      {row, c}
+    end
+    |> visible_through({row, col}, rows)
+  end
+
+  defp visible_from_right({row, col}, [top_row | _] = rows) do
+    max_col = length(top_row) - 1
+
+    for c <- (col + 1)..max_col do
+      {row, c}
+    end
+    |> visible_through({row, col}, rows)
+  end
+
+  defp visible_through(trees, tree, rows) do
+    Enum.all?(trees, fn other_tree ->
+      tree_height(other_tree, rows) < tree_height(tree, rows)
+    end)
+  end
+
+  defp scenery_count({0, _col}, _rows, :up), do: 0
+  defp scenery_count({_row, 0}, _rows, :left), do: 0
+  defp scenery_count({row, _col}, rows, :down) when row == length(rows) - 1, do: 0
+
+  defp scenery_count({_row, col}, [top_row | _rows], :right) when col == length(top_row) - 1,
+    do: 0
+
+  defp scenery_count({row, col}, rows, :up) do
+    for r <- (row - 1)..0 do
+      {r, col}
+    end
+    |> visible_trees({row, col}, rows)
+  end
+
+  defp scenery_count({row, col}, rows, :down) do
+    for r <- (row + 1)..(length(rows) - 1) do
+      {r, col}
+    end
+    |> visible_trees({row, col}, rows)
+  end
+
+  defp scenery_count({row, col}, rows, :left) do
+    for c <- (col - 1)..0 do
+      {row, c}
+    end
+    |> visible_trees({row, col}, rows)
+  end
+
+  defp scenery_count({row, col}, [top_row | _] = rows, :right) do
+    max_col = length(top_row) - 1
+
+    for c <- (col + 1)..max_col do
+      {row, c}
+    end
+    |> visible_trees({row, col}, rows)
+  end
+
+  defp visible_trees(trees, tree, rows) do
+    vantage_height = tree_height(tree, rows)
+
+    trees
+    |> Enum.map(fn other_tree -> tree_height(other_tree, rows) end)
+    |> Enum.reduce_while([], fn height, acc ->
+      if height < vantage_height do
+        {:cont, [height | acc]}
+      else
+        {:halt, [height | acc]}
+      end
+    end)
+    |> length()
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split()
+    |> Enum.map(&String.codepoints/1)
+    |> Enum.map(fn row -> Enum.map(row, &String.to_integer/1) end)
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+{part_1, part_2}
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input = ~s(
+30373
+25512
+65332
+33549
+35390
+)
+
+    {:ok, input: input}
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input) == 21
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) == 8
+  end
+end
+
+ExUnit.run()
+```
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_08.livemd)

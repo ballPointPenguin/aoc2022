@@ -1,4 +1,4 @@
-# AoC Template
+# 2022 Day 11
 
 ```elixir
 Mix.install([:kino])
@@ -6,7 +6,7 @@ Mix.install([:kino])
 
 ## Input
 
-[![Run in Livebook](https://livebook.dev/badge/v1/gray.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Faoc_template.livemd)
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_11.livemd)
 
 ```elixir
 input = Kino.Input.textarea("Puzzle Input")
@@ -23,20 +23,16 @@ defmodule Puzzle do
   def part_one(input) do
     input
     |> process_input()
-
-    # Do stuff
   end
 
   def part_two(input) do
     input
     |> process_input()
-
-    # Do stuff
   end
 
   defp process_input(input) do
     input
-    |> String.split("\n", trim: true)
+    |> String.split()
   end
 end
 ```
@@ -45,18 +41,20 @@ end
 Evaluate
 </h3>
 
+<!-- livebook:{"reevaluate_automatically":true} -->
+
 ```elixir
 part_1 =
   input
   |> Kino.Input.read()
   |> Puzzle.part_one()
 
-part_2 =
-  input
-  |> Kino.Input.read()
-  |> Puzzle.part_two()
+# part_2 =
+#   input
+#   |> Kino.Input.read()
+#   |> Puzzle.part_two()
 
-{part_1, part_2}
+# {part_1, part_2}
 ```
 
 <h3>
@@ -72,7 +70,6 @@ defmodule PuzzleTest do
   use ExUnit.Case, async: true
 
   setup do
-    # paste your example data after line 8
     input = ~s(
 )
 
@@ -80,12 +77,12 @@ defmodule PuzzleTest do
   end
 
   test "part_one", %{input: input} do
-    assert Puzzle.part_one(input) == 37
+    assert Puzzle.part_one(input) == 21
   end
 
-  test "part_two", %{input: input} do
-    assert Puzzle.part_two(input) == 42
-  end
+  # test "part_two", %{input: input} do
+  #   assert Puzzle.part_two(input) == 8
+  # end
 end
 
 ExUnit.run()

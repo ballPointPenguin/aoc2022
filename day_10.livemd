@@ -1,0 +1,297 @@
+# 2022 Day 10
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Puzzle do
+  def part_one(input) do
+    input
+    |> process_input()
+    |> process()
+    |> Enum.drop(19)
+    |> Enum.take_every(40)
+    |> Enum.zip([20, 60, 100, 140, 180, 220])
+    |> Enum.map(&Tuple.product/1)
+    |> Enum.sum()
+  end
+
+  def part_two(input) do
+    input
+    |> process_input()
+    |> process()
+    |> draw_crt()
+    |> Enum.chunk_every(40)
+    |> Enum.join("\n")
+  end
+
+  def process([op | ops]) do
+    cycle(ops, [1, op], [0])
+    |> Enum.reverse()
+    |> Enum.take(240)
+  end
+
+  defp cycle([], stack, registry) do
+    # process remaining stack and drop 0 placeholder
+    Enum.reduce(stack, registry, fn op, acc -> operate(op, acc) end)
+    |> Enum.drop(-1)
+  end
+
+  defp cycle([op | ops], [current, next], registry) do
+    cycle(ops, [next, op], operate(current, registry))
+  end
+
+  defp operate(:noop, [register | _] = registry), do: [register | registry]
+
+  defp operate(int, [register | _] = registry) do
+    new_val = register + int
+    [new_val | [new_val | registry]]
+  end
+
+  defp draw_crt(registry) do
+    Enum.concat(for _ <- 1..6, do: 0..39)
+    |> Enum.zip(registry)
+    |> Enum.map(fn {x, r} ->
+      if abs(x - r) < 2, do: "#", else: "."
+    end)
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.split/1)
+    |> Enum.map(fn line ->
+      case line do
+        ["noop"] -> :noop
+        ["addx", x] -> String.to_integer(x)
+      end
+    end)
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+IO.puts(part_1)
+IO.puts(part_2)
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    ops = [:noop, 3, -5]
+
+    input = ~s(
+addx 15
+addx -11
+addx 6
+addx -3
+addx 5
+addx -1
+addx -8
+addx 13
+addx 4
+noop
+addx -1
+addx 5
+addx -1
+addx 5
+addx -1
+addx 5
+addx -1
+addx 5
+addx -1
+addx -35
+addx 1
+addx 24
+addx -19
+addx 1
+addx 16
+addx -11
+noop
+noop
+addx 21
+addx -15
+noop
+noop
+addx -3
+addx 9
+addx 1
+addx -3
+addx 8
+addx 1
+addx 5
+noop
+noop
+noop
+noop
+noop
+addx -36
+noop
+addx 1
+addx 7
+noop
+noop
+noop
+addx 2
+addx 6
+noop
+noop
+noop
+noop
+noop
+addx 1
+noop
+noop
+addx 7
+addx 1
+noop
+addx -13
+addx 13
+addx 7
+noop
+addx 1
+addx -33
+noop
+noop
+noop
+addx 2
+noop
+noop
+noop
+addx 8
+noop
+addx -1
+addx 2
+addx 1
+noop
+addx 17
+addx -9
+addx 1
+addx 1
+addx -3
+addx 11
+noop
+noop
+addx 1
+noop
+addx 1
+noop
+noop
+addx -13
+addx -19
+addx 1
+addx 3
+addx 26
+addx -30
+addx 12
+addx -1
+addx 3
+addx 1
+noop
+noop
+noop
+addx -9
+addx 18
+addx 1
+addx 2
+noop
+noop
+addx 9
+noop
+noop
+noop
+addx -1
+addx 2
+addx -37
+addx 1
+addx 3
+noop
+addx 15
+addx -21
+addx 22
+addx -6
+addx 1
+noop
+addx 2
+addx 1
+noop
+addx -10
+noop
+noop
+addx 20
+addx 1
+addx 2
+addx 2
+addx -6
+addx -11
+noop
+noop
+noop
+)
+
+    {:ok, input: input, ops: ops}
+  end
+
+  test "process", %{ops: ops} do
+    [register] = Puzzle.process(ops) |> Enum.take(-1)
+    assert register == -1
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input) == 13140
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) ==
+             ~s(##..##..##..##..##..##..##..##..##..##..
+###...###...###...###...###...###...###.
+####....####....####....####....####....
+#####.....#####.....#####.....#####.....
+######......######......######......####
+#######.......#######.......#######.....)
+  end
+end
+
+ExUnit.run()
+```
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_10.livemd)

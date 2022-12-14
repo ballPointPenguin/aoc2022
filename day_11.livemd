@@ -26,11 +26,7 @@ defmodule Puzzle do
     |> construct_monkeys()
     |> calculate_lcd()
     |> process_rounds(20, %{relax: 3})
-    |> Tuple.to_list()
-    |> Enum.map(& &1.inspected)
-    |> Enum.sort()
-    |> Enum.take(-2)
-    |> Enum.product()
+    |> monkey_business()
   end
 
   def part_two(input) do
@@ -39,6 +35,11 @@ defmodule Puzzle do
     |> construct_monkeys()
     |> calculate_lcd()
     |> process_rounds(10000)
+    |> monkey_business()
+  end
+
+  defp monkey_business(monkeys) do
+    monkeys
     |> Tuple.to_list()
     |> Enum.map(& &1.inspected)
     |> Enum.sort()

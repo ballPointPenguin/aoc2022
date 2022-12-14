@@ -23,16 +23,147 @@ defmodule Puzzle do
   def part_one(input) do
     input
     |> process_input()
+    |> construct_monkeys()
+    |> calculate_lcd()
+    |> process_rounds(20, %{relax: 3})
+    |> Tuple.to_list()
+    |> Enum.map(& &1.inspected)
+    |> Enum.sort()
+    |> Enum.take(-2)
+    |> Enum.product()
   end
 
   def part_two(input) do
     input
     |> process_input()
+    |> construct_monkeys()
+    |> calculate_lcd()
+    |> process_rounds(10000)
+    |> Tuple.to_list()
+    |> Enum.map(& &1.inspected)
+    |> Enum.sort()
+    |> Enum.take(-2)
+    |> Enum.product()
+  end
+
+  defp process_rounds(monkeys_lcd, rounds, relax \\ %{relax: 1})
+
+  defp process_rounds({monkeys, _}, 0, _), do: monkeys
+
+  defp process_rounds({monkeys, lcd}, rounds, relax) do
+    monkey_indices = 0..(tuple_size(monkeys) - 1) |> Enum.to_list()
+    updated_monkeys = process_monkeys(monkeys, monkey_indices, relax, lcd)
+
+    process_rounds({updated_monkeys, lcd}, rounds - 1, relax)
+  end
+
+  defp process_monkeys(monkeys, [], _, _), do: monkeys
+
+  defp process_monkeys(monkeys, [index | indices], relax, lcd) do
+    monkey = elem(monkeys, index)
+    item_targets = process_items(monkey, relax, lcd)
+
+    monkeys
+    |> throw_stuff(item_targets)
+    |> remove_and_count_items(index)
+    |> process_monkeys(indices, relax, lcd)
+  end
+
+  defp process_items(monkey, relax, lcd) do
+    monkey[:items]
+    |> Enum.map(
+      &(&1
+        |> worry(monkey, lcd)
+        |> relax(relax)
+        |> target(monkey))
+    )
+  end
+
+  defp worry(item, %{operation: operation}, lcd) do
+    case operation do
+      ["*", "old"] ->
+        square = item ** 2
+        if square < lcd, do: square, else: rem(square, lcd)
+
+      ["*", str] ->
+        item * String.to_integer(str)
+
+      ["+", str] ->
+        item + String.to_integer(str)
+    end
+  end
+
+  defp target(item, %{test: test, true_throw: true_throw, false_throw: false_throw}) do
+    case rem(item, test) do
+      0 -> {item, true_throw}
+      _ -> {item, false_throw}
+    end
+  end
+
+  defp relax(item, %{relax: 1}), do: item
+  defp relax(item, %{relax: relax}), do: floor(item / relax)
+
+  defp throw_stuff(monkeys, item_targets) do
+    Enum.reduce(item_targets, monkeys, fn {item, target}, acc ->
+      add_item(acc, target, item)
+    end)
+  end
+
+  defp add_item(monkeys, index, item) do
+    monkey = elem(monkeys, index)
+    put_elem(monkeys, index, Map.put(monkey, :items, monkey[:items] ++ [item]))
+  end
+
+  defp remove_and_count_items(monkeys, index) do
+    monkey = elem(monkeys, index)
+    inspected = monkey[:inspected] + length(monkey[:items])
+
+    put_elem(monkeys, index, Map.merge(monkey, %{items: [], inspected: inspected}))
+  end
+
+  defp calculate_lcd(monkeys) do
+    {monkeys,
+     monkeys
+     |> Tuple.to_list()
+     |> Enum.map(& &1.test)
+     |> Enum.product()}
+  end
+
+  defp construct_monkeys(texts) do
+    Enum.map(texts, fn text ->
+      %{
+        id: Enum.at(text, 0) |> get_number(),
+        items: Enum.at(text, 1) |> get_numbers(),
+        operation: Enum.at(text, 2) |> String.split() |> Enum.take(-2),
+        test: Enum.at(text, 3) |> get_number(),
+        true_throw: Enum.at(text, 4) |> get_number(),
+        false_throw: Enum.at(text, 5) |> get_number(),
+        inspected: 0
+      }
+    end)
+    |> List.to_tuple()
+  end
+
+  defp get_number(str) do
+    Regex.run(~r{\d+}, str)
+    |> List.first()
+    |> String.to_integer()
+  end
+
+  defp get_numbers(str) do
+    Regex.scan(~r{\d+}, str)
+    |> Enum.map(
+      &(&1
+        |> List.first()
+        |> String.to_integer())
+    )
   end
 
   defp process_input(input) do
     input
-    |> String.split()
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.chunk_every(6)
   end
 end
 ```
@@ -49,12 +180,12 @@ part_1 =
   |> Kino.Input.read()
   |> Puzzle.part_one()
 
-# part_2 =
-#   input
-#   |> Kino.Input.read()
-#   |> Puzzle.part_two()
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
 
-# {part_1, part_2}
+{part_1, part_2}
 ```
 
 <h3>
@@ -71,18 +202,45 @@ defmodule PuzzleTest do
 
   setup do
     input = ~s(
+Monkey 0:
+  Starting items: 79, 98
+  Operation: new = old * 19
+  Test: divisible by 23
+    If true: throw to monkey 2
+    If false: throw to monkey 3
+
+Monkey 1:
+  Starting items: 54, 65, 75, 74
+  Operation: new = old + 6
+  Test: divisible by 19
+    If true: throw to monkey 2
+    If false: throw to monkey 0
+
+Monkey 2:
+  Starting items: 79, 60, 97
+  Operation: new = old * old
+  Test: divisible by 13
+    If true: throw to monkey 1
+    If false: throw to monkey 3
+
+Monkey 3:
+  Starting items: 74
+  Operation: new = old + 3
+  Test: divisible by 17
+    If true: throw to monkey 0
+    If false: throw to monkey 1
 )
 
     {:ok, input: input}
   end
 
   test "part_one", %{input: input} do
-    assert Puzzle.part_one(input) == 21
+    assert Puzzle.part_one(input) == 10605
   end
 
-  # test "part_two", %{input: input} do
-  #   assert Puzzle.part_two(input) == 8
-  # end
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) == 2_713_310_158
+  end
 end
 
 ExUnit.run()

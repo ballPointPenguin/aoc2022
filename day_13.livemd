@@ -6,7 +6,7 @@ Mix.install([:kino])
 
 ## Input
 
-[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_12.livemd)
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_13.livemd)
 
 ```elixir
 input = Kino.Input.textarea("Puzzle Input")

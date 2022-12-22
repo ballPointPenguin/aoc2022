@@ -1,0 +1,185 @@
+# 2022 Day 14
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_14.livemd)
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Puzzle do
+  @origin {500, 0}
+
+  def part_one(input) do
+    input
+    |> process_input()
+    |> initialize_grid()
+    |> find_bottom()
+    |> sand_flow(@origin)
+  end
+
+  def part_two(input) do
+    input
+    |> process_input()
+    |> initialize_grid()
+    |> find_bottom(2)
+    |> sand_flow_2(@origin)
+  end
+
+  defp sand_flow_2({grid, y_max, count} = env, {x, y}) do
+    cond do
+      count > 50000 ->
+        IO.puts("TOO MUCH!")
+        grid
+
+      {x, y} in grid ->
+        IO.puts("FULL UP!")
+        count
+
+      y + 1 == y_max ->
+        if rem(count, 250) == 0, do: IO.puts("COUNT :: #{count}")
+        # IO.inspect({x, y}, label: "FLOOR!")
+        sand_flow_2({[{x, y} | grid], y_max, count + 1}, @origin)
+
+      {x, y + 1} not in grid ->
+        sand_flow_2(env, {x, y + 1})
+
+      {x - 1, y + 1} not in grid ->
+        sand_flow_2(env, {x - 1, y + 1})
+
+      {x + 1, y + 1} not in grid ->
+        sand_flow_2(env, {x + 1, y + 1})
+
+      true ->
+        if rem(count, 250) == 0, do: IO.puts("COUNT :: #{count}")
+        # {x, y} not in grid ->
+        # IO.inspect({x, y}, label: "REST!")
+        sand_flow_2({[{x, y} | grid], y_max, count + 1}, @origin)
+    end
+  end
+
+  defp sand_flow({grid, y_max, count} = env, {x, y}) do
+    cond do
+      y == y_max ->
+        IO.puts("ABYSS!")
+        count
+
+      {x, y + 1} not in grid ->
+        sand_flow(env, {x, y + 1})
+
+      {x - 1, y + 1} not in grid ->
+        sand_flow(env, {x - 1, y + 1})
+
+      {x + 1, y + 1} not in grid ->
+        sand_flow(env, {x + 1, y + 1})
+
+      {x, y} not in grid ->
+        # IO.inspect({x, y}, label: "REST!")
+        sand_flow({[{x, y} | grid], y_max, count + 1}, @origin)
+    end
+  end
+
+  defp find_bottom(grid, adjustment \\ 0) do
+    y_max =
+      grid
+      |> Enum.map(fn {_x, y} -> y end)
+      |> Enum.max()
+      |> Kernel.+(adjustment)
+
+    # including the initial sand count of 0
+    {grid, y_max, 0}
+  end
+
+  defp initialize_grid(lines) do
+    lines
+    |> Enum.map(&line_segments/1)
+    |> List.flatten()
+    |> Enum.uniq()
+  end
+
+  defp line_segments(segments) do
+    segments
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.map(fn [{x1, y1}, {x2, y2}] ->
+      for x <- x1..x2, y <- y1..y2, do: {x, y}
+    end)
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(fn line ->
+      Regex.scan(~r{\d+}, line)
+      |> Enum.concat()
+      |> Enum.map(&String.to_integer/1)
+      |> Enum.chunk_every(2)
+      |> Enum.map(&List.to_tuple/1)
+    end)
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+{part_1, part_2}
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input = ~s(
+498,4 -> 498,6 -> 496,6
+503,4 -> 502,4 -> 502,9 -> 494,9
+)
+
+    {:ok, input: input}
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input) == 24
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) == 93
+  end
+end
+
+ExUnit.run()
+```

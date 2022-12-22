@@ -1,0 +1,216 @@
+# 2022 Day 15
+
+```elixir
+Mix.install([:kino])
+```
+
+## Input
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_15.livemd)
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+## Code
+
+<h3>
+Module
+</h3>
+
+```elixir
+defmodule Puzzle do
+  def part_one(input, y) do
+    input
+    |> process_input()
+    |> make_grid()
+    |> calculate_row_y(y)
+    |> dedupe()
+    |> uncount(y)
+  end
+
+  def part_two(input, max) do
+    input
+    |> process_input()
+    |> append_manhattan()
+    |> check_outlines(max)
+    |> tuning_freq()
+  end
+
+  defp dedupe(grid) do
+    others = grid[:b] ++ grid[:s]
+
+    grid
+    |> Map.update(:n, [], fn empties ->
+      empties
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> then(fn points -> points -- others end)
+    end)
+  end
+
+  defp uncount(grid, y) do
+    grid
+    |> Map.get(:n)
+    |> Enum.filter(fn {_nx, ny} -> ny == y end)
+    |> length()
+  end
+
+  defp make_grid(coords) do
+    grid =
+      Enum.reduce(coords, %{b: [], n: [], s: []}, fn {sx, sy, bx, by}, acc ->
+        acc
+        |> Map.update(:b, [], fn beacons -> [{bx, by} | beacons] end)
+        |> Map.update(:s, [], fn sensors -> [{sx, sy} | sensors] end)
+      end)
+
+    {grid, coords}
+  end
+
+  defp calculate_row_y({grid, coords}, y) do
+    Enum.reduce(coords, grid, fn {sx, sy, bx, by}, acc ->
+      Map.update(acc, :n, [], fn empties ->
+        manhattan_row({sx, sy, bx, by}, y) ++ empties
+      end)
+    end)
+  end
+
+  defp check_outlines(coords, max) do
+    Enum.find_value(coords, fn coord -> check_outline(coord, coords, max) end)
+  end
+
+  def check_outline({x, y, _, _, m}, coords, max) do
+    draw_outline({x, y}, m + 1)
+    |> reject_outsiders(max)
+    |> check_coverage(coords)
+  end
+
+  def draw_outline({sx, sy}, r) do
+    for d <- 0..(r - 1) do
+      [
+        {sx + d, sy + (r - d)},
+        {sx + (r - d), sy - d},
+        {sx - d, sy - (r - d)},
+        {sx - (r - d), sy + d}
+      ]
+    end
+    |> List.flatten()
+  end
+
+  def reject_outsiders(points, max) do
+    Enum.reject(points, fn {x, y} ->
+      x < 0 or y < 0 or x > max or y > max
+    end)
+  end
+
+  def check_coverage(points, coords) do
+    Enum.find(points, fn point -> not covered?(point, coords) end)
+  end
+
+  def covered?({x, y}, coords) do
+    Enum.any?(coords, fn {sx, sy, _, _, m} ->
+      manhattan({x, y, sx, sy}) <= m
+    end)
+  end
+
+  def tuning_freq({x, y}), do: 4_000_000 * x + y
+
+  defp append_manhattan(coords) do
+    Enum.map(coords, fn coord ->
+      Tuple.append(coord, manhattan(coord))
+    end)
+  end
+
+  defp manhattan({x1, y1, x2, y2}), do: abs(x1 - x2) + abs(y1 - y2)
+
+  defp manhattan_row({sx, sy, bx, by}, yy) do
+    x_diff = manhattan({sx, sy, bx, by}) - abs(sy - yy)
+
+    if x_diff > 0 do
+      for x <- (-1 * x_diff)..x_diff do
+        {sx + x, yy}
+      end
+    else
+      []
+    end
+  end
+
+  defp process_input(input) do
+    input
+    |> String.split("\n", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(fn str -> str == "" end)
+    |> Enum.map(
+      &(Regex.scan(~r{-?\d+}, &1)
+        |> List.flatten()
+        |> Enum.map(fn str -> String.to_integer(str) end)
+        |> List.to_tuple())
+    )
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one(2_000_000)
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two(4_000_000)
+
+{part_1, part_2}
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input = ~s(
+Sensor at x=2, y=18: closest beacon is at x=-2, y=15
+Sensor at x=9, y=16: closest beacon is at x=10, y=16
+Sensor at x=13, y=2: closest beacon is at x=15, y=3
+Sensor at x=12, y=14: closest beacon is at x=10, y=16
+Sensor at x=10, y=20: closest beacon is at x=10, y=16
+Sensor at x=14, y=17: closest beacon is at x=10, y=16
+Sensor at x=8, y=7: closest beacon is at x=2, y=10
+Sensor at x=2, y=0: closest beacon is at x=2, y=10
+Sensor at x=0, y=11: closest beacon is at x=2, y=10
+Sensor at x=20, y=14: closest beacon is at x=25, y=17
+Sensor at x=17, y=20: closest beacon is at x=21, y=22
+Sensor at x=16, y=7: closest beacon is at x=15, y=3
+Sensor at x=14, y=3: closest beacon is at x=15, y=3
+Sensor at x=20, y=1: closest beacon is at x=15, y=3
+  )
+
+    {:ok, input: input}
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input, 10) == 26
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input, 20) == 56_000_011
+  end
+end
+
+ExUnit.run()
+```

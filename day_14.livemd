@@ -41,16 +41,12 @@ defmodule Puzzle do
   defp sand_flow_2({grid, y_max, count} = env, {x, y}) do
     cond do
       count > 50000 ->
-        IO.puts("TOO MUCH!")
         grid
 
       {x, y} in grid ->
-        IO.puts("FULL UP!")
         count
 
       y + 1 == y_max ->
-        if rem(count, 250) == 0, do: IO.puts("COUNT :: #{count}")
-        # IO.inspect({x, y}, label: "FLOOR!")
         sand_flow_2({[{x, y} | grid], y_max, count + 1}, @origin)
 
       {x, y + 1} not in grid ->
@@ -63,9 +59,6 @@ defmodule Puzzle do
         sand_flow_2(env, {x + 1, y + 1})
 
       true ->
-        if rem(count, 250) == 0, do: IO.puts("COUNT :: #{count}")
-        # {x, y} not in grid ->
-        # IO.inspect({x, y}, label: "REST!")
         sand_flow_2({[{x, y} | grid], y_max, count + 1}, @origin)
     end
   end
@@ -73,7 +66,6 @@ defmodule Puzzle do
   defp sand_flow({grid, y_max, count} = env, {x, y}) do
     cond do
       y == y_max ->
-        IO.puts("ABYSS!")
         count
 
       {x, y + 1} not in grid ->
@@ -86,7 +78,6 @@ defmodule Puzzle do
         sand_flow(env, {x + 1, y + 1})
 
       {x, y} not in grid ->
-        # IO.inspect({x, y}, label: "REST!")
         sand_flow({[{x, y} | grid], y_max, count + 1}, @origin)
     end
   end

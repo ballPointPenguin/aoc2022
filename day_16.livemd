@@ -1,0 +1,310 @@
+# 2022 Day 16
+
+```elixir
+Mix.install([
+  {:kino_benchee, git: "https://github.com/livebook-dev/kino_benchee"},
+  :map_diff,
+  :memoize,
+  :nimble_parsec
+])
+```
+
+## Input
+
+[![Run in Livebook](https://livebook.dev/badge/v1/black.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2FballPointPenguin%2Faoc2022%2Fblob%2Fmain%2Fday_16.livemd)
+
+```elixir
+input = Kino.Input.textarea("Puzzle Input")
+```
+
+```elixir
+reality = Kino.Input.textarea("Your Input")
+```
+
+## Code
+
+<h3>
+Modules
+</h3>
+
+```elixir
+defmodule Parser do
+  import NimbleParsec
+
+  valve = ascii_string([?A..?Z], 2)
+
+  line =
+    unwrap_and_tag(eventually(valve), :valve)
+    |> unwrap_and_tag(eventually(integer(min: 1)), :flow)
+    |> tag(eventually(valve) |> repeat(), :children)
+
+  defparsec(:line, line)
+
+  def parse(input) do
+    for line <- String.split(input, "\n", trim: true),
+        {:ok, parsed, _, _, _, _} = Parser.line(line),
+        do: Map.new(parsed)
+  end
+end
+```
+
+```elixir
+defmodule Paths do
+  def calculate_distances(data) do
+    valves = for node <- data, node.flow > 0 or node.valve == "AA", do: node.valve
+
+    distances =
+      for node <- data,
+          into: %{},
+          do: {node.valve, calc_dist(node, data)}
+
+    trim_distances(distances, valves)
+  end
+
+  def trim_distances(distances, valves) do
+    for {key, val} <- distances,
+        {k, v} <- val,
+        key in valves,
+        k in valves,
+        v > 0,
+        reduce: %{} do
+      acc ->
+        Map.put_new(acc, key, %{})
+        |> put_in([key, k], v)
+    end
+  end
+
+  def calc_dist(%{valve: valve, children: children}, data) do
+    distances = %{valve => 0}
+
+    unexplored =
+      for(%{valve: v} <- data, into: MapSet.new(), do: v)
+      |> MapSet.delete(valve)
+
+    calc_dist(children, distances, unexplored, data, 1)
+  end
+
+  defp calc_dist([], distances, _, _, _), do: distances
+
+  defp calc_dist(frontier, distances, unexplored, data, step) do
+    new_distances =
+      for valve <- frontier, reduce: distances do
+        distances -> Map.put_new(distances, valve, step)
+      end
+
+    new_frontier =
+      frontier
+      |> Enum.map(fn valve -> Enum.find(data, &match?(%{valve: ^valve}, &1)) end)
+      |> Enum.map(&Map.get(&1, :children))
+      |> List.flatten()
+      |> Enum.uniq()
+      |> Enum.filter(&(&1 in unexplored))
+
+    new_unexplored =
+      new_frontier
+      |> Enum.reduce(unexplored, fn valve, acc -> MapSet.delete(acc, valve) end)
+
+    calc_dist(new_frontier, new_distances, new_unexplored, data, step + 1)
+  end
+end
+```
+
+```elixir
+defmodule Puzzle do
+  use Memoize
+
+  @origin "AA"
+  @limit_1 30
+  @limit_2 26
+
+  def part_one(input) do
+    input
+    |> Parser.parse()
+    |> process_data()
+    |> simple_search({@origin, @limit_1, 0})
+  end
+
+  def part_two(input) do
+    init_state = {@origin, @limit_2, []}
+
+    input
+    |> Parser.parse()
+    |> process_data()
+    |> buddy_search([m: init_state, e: init_state], :m, 0)
+  end
+
+  def process_data(data) do
+    valves = for node <- data, node.flow > 0, into: %{}, do: {node.valve, node.flow}
+    distances = Paths.calculate_distances(data)
+
+    {distances, valves}
+  end
+
+  defmemo simple_search({distances, unexplored}, {_, _, pressure} = state) do
+    results = search(distances, unexplored, state)
+
+    case results do
+      [] -> pressure
+      _ -> results |> List.flatten() |> Enum.max()
+    end
+  end
+
+  defmemo search(distances, unexplored, {current, time, pressure}) do
+    for {valve, flow} <- unexplored,
+        dist = distances[current][valve],
+        new_time = time - dist - 1,
+        dist < time do
+      new_unexplored = Map.delete(unexplored, valve)
+      new_pressure = flow * new_time + pressure
+
+      simple_search({distances, new_unexplored}, {valve, new_time, new_pressure})
+    end
+  end
+
+  def buddy_search({distances, unexplored}, states, agent, pressure) do
+    results = alt_search(distances, unexplored, states, agent, pressure)
+
+    case results do
+      [] -> pressure
+      _ -> results |> List.flatten() |> Enum.max()
+    end
+  end
+
+  def alt_search(distances, unexplored, states, agent, pressure) do
+    {current, time, path} = states[agent]
+
+    for {valve, flow} <- unexplored,
+        dist = distances[current][valve],
+        new_time = time - dist - 1,
+        dist < time do
+      new_unexplored = Map.delete(unexplored, valve)
+      new_pressure = flow * new_time + pressure
+      new_path = [valve | path]
+      new_states = Keyword.put(states, agent, {valve, new_time, new_path})
+      # Alternate between the person and the elephant
+      next_agent = if agent == :m, do: :e, else: :m
+
+      buddy_search({distances, new_unexplored}, new_states, next_agent, new_pressure)
+    end
+  end
+end
+```
+
+<h3>
+Evaluate
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+part_1 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_one()
+
+part_2 =
+  input
+  |> Kino.Input.read()
+  |> Puzzle.part_two()
+
+{part_1, part_2}
+
+# 1651, 1707
+```
+
+<h3>
+Test
+</h3>
+
+<!-- livebook:{"reevaluate_automatically":true} -->
+
+```elixir
+ExUnit.start(autorun: false)
+
+defmodule PuzzleTest do
+  use ExUnit.Case, async: true
+
+  setup do
+    input = ~s(
+Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
+Valve BB has flow rate=13; tunnels lead to valves CC, AA
+Valve CC has flow rate=2; tunnels lead to valves DD, BB
+Valve DD has flow rate=20; tunnels lead to valves CC, AA, EE
+Valve EE has flow rate=3; tunnels lead to valves FF, DD
+Valve FF has flow rate=0; tunnels lead to valves EE, GG
+Valve GG has flow rate=0; tunnels lead to valves FF, HH
+Valve HH has flow rate=22; tunnel leads to valve GG
+Valve II has flow rate=0; tunnels lead to valves AA, JJ
+Valve JJ has flow rate=21; tunnel leads to valve II
+)
+
+    {:ok, input: input}
+  end
+
+  test "part_one", %{input: input} do
+    assert Puzzle.part_one(input) == 1651
+  end
+
+  test "part_two", %{input: input} do
+    assert Puzzle.part_two(input) == 1707
+  end
+end
+
+ExUnit.run()
+```
+
+```elixir
+#  0.4 ms =>  9 μs
+# 77   ms => 38 μs
+
+# 0.00001 min => 9 μs
+# 1.60    min => !!!!! forever
+
+defmodule PerfTest do
+  @origin "AA"
+  @limit_1 30
+  @limit_2 26
+
+  @example Kino.Input.read(input)
+  @reality Kino.Input.read(reality)
+
+  @e_data Parser.parse(@example)
+  @r_data Parser.parse(@reality)
+
+  @e_d_v Puzzle.process_data(@e_data)
+  @r_d_v Puzzle.process_data(@r_data)
+
+  @init_states [
+    m: {@origin, @limit_2, []},
+    e: {@origin, @limit_2, []}
+  ]
+
+  def simple_search_e() do
+    Puzzle.simple_search(@e_d_v, {@origin, @limit_1, 0})
+  end
+
+  def simple_search_r() do
+    Puzzle.simple_search(@r_d_v, {@origin, @limit_2, 0})
+  end
+
+  def buddy_search_e() do
+    Puzzle.buddy_search(@e_d_v, @init_states, :m, 0)
+  end
+
+  def buddy_search_r() do
+    Puzzle.buddy_search(@r_d_v, @init_states, :m, 0)
+  end
+end
+
+Benchee.run(
+  %{
+    "simple_e" => &PerfTest.simple_search_e/0,
+    "simple_r" => &PerfTest.simple_search_r/0,
+    "buddy_e" => &PerfTest.buddy_search_e/0,
+    "buddy_r" => &PerfTest.buddy_search_r/0
+  },
+  time: 1,
+  memory_time: 1,
+  reduction_time: 1
+)
+```
